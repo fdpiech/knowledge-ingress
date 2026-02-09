@@ -5,6 +5,10 @@
     "PollIntervalSeconds": 10,
     "FileFilter": "*.txt",
 
-    "FlowUrl": "https://prod-00.westus.logic.azure.com:443/workflows/XXXX/triggers/manual/paths/invoke?api-version=2016-06-01&sp=...",
+    "TenantId": "YOUR-AZURE-AD-TENANT-ID",
+    "ClientId": "YOUR-APP-REGISTRATION-CLIENT-ID",
+    "ClientSecret": "YOUR-CLIENT-SECRET-VALUE",
+
+    "FlowUrl": "https://YOUR-ENVIRONMENT.api.crm.dynamics.com/...",
     "ResponseField": "reply"
 }

@@ -48,7 +48,7 @@ if (-not (Test-Path $ConfigPath)) {
 $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 
 # Validate required settings
-$requiredFields = @("InboxPath", "KnowledgeRepoPath", "FlowUrl")
+$requiredFields = @("InboxPath", "KnowledgeRepoPath", "FlowUrl", "TenantId", "ClientId", "ClientSecret")
 foreach ($field in $requiredFields) {
     if (-not $Config.$field) {
         Write-Error "Missing required config field: $field"
@@ -63,6 +63,9 @@ $PollInterval     = if ($Config.PollIntervalSeconds) { $Config.PollIntervalSecon
 $FileFilter       = if ($Config.FileFilter) { $Config.FileFilter } else { "*.txt" }
 $FlowUrl          = $Config.FlowUrl
 $ResponseField    = if ($Config.ResponseField) { $Config.ResponseField } else { "reply" }
+$TenantId         = $Config.TenantId
+$ClientId         = $Config.ClientId
+$ClientSecret     = $Config.ClientSecret
 
 # ── Ensure directories exist ────────────────────────────────────────
 
@@ -75,15 +78,56 @@ foreach ($dir in @($InboxPath, $ArchivePath, $KnowledgeRepo)) {
 
 # ── Functions ────────────────────────────────────────────────────────
 
+# Token cache — avoids re-authenticating on every request
+$script:CachedToken    = $null
+$script:TokenExpiresAt = [datetime]::MinValue
+
+function Get-OAuthToken {
+    <#
+    .SYNOPSIS
+        Acquires an OAuth token using client credentials, with caching.
+    #>
+
+    # Return cached token if still valid (with 2-minute buffer)
+    if ($script:CachedToken -and [datetime]::UtcNow -lt $script:TokenExpiresAt.AddMinutes(-2)) {
+        return $script:CachedToken
+    }
+
+    $tokenUri = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+
+    $scope         = [Uri]::EscapeDataString('https://service.flow.microsoft.com//.default')
+    $clientSecretE = [Uri]::EscapeDataString($ClientSecret)
+    $tokenBody     = "client_id=$ClientId&client_secret=$clientSecretE&grant_type=client_credentials&scope=$scope"
+
+    Write-Host "  Acquiring OAuth token ..." -ForegroundColor DarkCyan
+
+    $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri `
+        -Headers @{ 'Content-Type' = 'application/x-www-form-urlencoded' } `
+        -Body $tokenBody
+
+    if ([string]::IsNullOrWhiteSpace($tokenResponse.access_token)) {
+        throw "No access token returned. Check TenantId, ClientId, ClientSecret, and scope."
+    }
+
+    $script:CachedToken    = $tokenResponse.access_token
+    $script:TokenExpiresAt = [datetime]::UtcNow.AddSeconds($tokenResponse.expires_in)
+
+    Write-Host "  Token acquired (expires in $($tokenResponse.expires_in)s)" -ForegroundColor DarkCyan
+    return $script:CachedToken
+}
+
 function Send-ToFlow {
     <#
     .SYNOPSIS
-        POSTs transcript text to the Power Automate HTTP trigger and returns the response.
+        POSTs transcript text to the Power Automate flow endpoint using OAuth
+        bearer-token authentication, and returns the response.
     #>
     param(
         [Parameter(Mandatory)][string]$Transcript,
         [Parameter(Mandatory)][string]$SourceFileName
     )
+
+    $accessToken = Get-OAuthToken
 
     $body = @{
         message  = $Transcript
@@ -91,7 +135,8 @@ function Send-ToFlow {
     } | ConvertTo-Json -Depth 10
 
     $headers = @{
-        "Content-Type" = "application/json"
+        'Authorization' = "Bearer $accessToken"
+        'Content-Type'  = 'application/json'
     }
 
     Write-Host "  Sending to Copilot Studio flow ..." -ForegroundColor Cyan

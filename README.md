@@ -27,12 +27,26 @@ inbox/archive/
 # 1. Copy the example config and fill in your settings
 Copy-Item config.example.json config.json
 
-# 2. Edit config.json — set your Flow URL and paths
+# 2. Edit config.json — set your OAuth credentials, Flow URL, and paths
 notepad config.json
 
 # 3. Run it
 .\Invoke-KnowledgeIngress.ps1
 ```
+
+### Azure AD app registration
+
+The script authenticates using the OAuth 2.0 client credentials flow. You need
+an Azure AD app registration with permission to call your Power Automate flow:
+
+1. In the Azure portal, create (or reuse) an **App Registration**
+2. Note the **Application (client) ID** and **Directory (tenant) ID**
+3. Under **Certificates & secrets**, create a client secret and copy the value
+4. Under **API permissions**, add `https://service.flow.microsoft.com//.default`
+   (the double-slash is intentional)
+5. Grant admin consent for the permission
+
+Put the tenant ID, client ID, and secret into `config.json`.
 
 ## Configuration
 
@@ -43,7 +57,10 @@ notepad config.json
 | `KnowledgeRepoPath` | Output directory — point this at your knowledge git repo |
 | `PollIntervalSeconds` | How often to check for new files (default: 10) |
 | `FileFilter` | File pattern to match (default: `*.txt`) |
-| `FlowUrl` | Power Automate HTTP trigger URL |
+| `TenantId` | Azure AD tenant ID |
+| `ClientId` | App registration client ID |
+| `ClientSecret` | App registration client secret value |
+| `FlowUrl` | Power Automate flow endpoint URL |
 | `ResponseField` | JSON field in the flow response that contains the result (default: `reply`) |
 
 ## Usage
