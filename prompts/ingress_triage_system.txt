@@ -1,0 +1,16 @@
+# Ingress Triage System Prompt  (placeholder — will be replaced after hello-world proves the round trip)
+#
+# This file will contain the full system instructions for the INGRESS_ANALYZE_HTTP
+# Prompt action in Copilot Studio / Power Automate.
+#
+# Requirements (from spec):
+#   - JSON only. No prose. No fences.
+#   - Must follow schema shapes v1_1 for norm/tac/sig.
+#   - Must create NORM segments with seq starting at 1.
+#   - TAC inputs.norm_ref = norm(source):<norm_id>
+#   - SIG inputs.norm_ref = norm(source):<norm_id>
+#   - All evidence_refs use norm_id + #seq or #start-end
+#   - recommended_nudges max 1-3
+#   - Leave arrays empty when weak evidence
+
+TODO: Replace this placeholder with the full production prompt after hello-world succeeds.

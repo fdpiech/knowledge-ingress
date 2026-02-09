@@ -1,0 +1,24 @@
+{
+  "RepoRoot": "C:\\repos\\knowledge-ingress",
+  "IngressFolder": "ingress\\meeting",
+  "RunsFolder": "runs",
+  "ArtifactsFolder": "artifacts",
+  "FlowUrl": "https://YOUR-FLOW-URL-HERE.logic.azure.com/workflows/.../triggers/manual/paths/invoke?api-version=2016-06-01&sig=...",
+  "HelloWorldFlowUrl": "https://YOUR-HELLOWORLD-FLOW-URL-HERE.logic.azure.com/workflows/.../triggers/manual/paths/invoke?api-version=2016-06-01&sig=...",
+  "Commit": true,
+  "Defaults": {
+    "project_id": "knowledge-ingress",
+    "thread_id": "thread-001",
+    "source_type": "meeting_platform",
+    "title_prefix": "Meeting",
+    "participants": [],
+    "tags": [],
+    "language": "en",
+    "trend_window_days": 45,
+    "schema_versions": {
+      "norm": "norm.v1_1",
+      "tac": "tac.v1_1",
+      "sig": "sig.v1_1"
+    }
+  }
+}
