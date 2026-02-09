@@ -1,0 +1,10 @@
+{
+    "InboxPath": "C:\\Knowledge\\inbox",
+    "ArchivePath": "C:\\Knowledge\\inbox\\archive",
+    "KnowledgeRepoPath": "C:\\Knowledge\\knowledge-base",
+    "PollIntervalSeconds": 10,
+    "FileFilter": "*.txt",
+
+    "FlowUrl": "https://prod-00.westus.logic.azure.com:443/workflows/XXXX/triggers/manual/paths/invoke?api-version=2016-06-01&sp=...",
+    "ResponseField": "reply"
+}
