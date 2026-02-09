@@ -1,14 +1,15 @@
 # knowledge-ingress
 
-Watches an inbox directory for transcript files, sends them to an LLM for
-processing, and writes the results to a separate knowledge repository.
+Watches an inbox directory for transcript files, sends them to a Copilot
+Studio flow via Power Automate HTTP trigger, and writes the results to a
+separate knowledge repository.
 
 ## How it works
 
 ```
 inbox/              ──▶  Invoke-KnowledgeIngress.ps1  ──▶  knowledge-repo/
-  meeting-notes.txt        (reads file, calls LLM)          2026-02-09_meeting-notes.md
-  interview.txt            (writes structured output)        2026-02-09_interview.md
+  meeting-notes.txt        (reads file, POSTs to flow)       2026-02-09_meeting-notes.md
+  interview.txt            (captures response)               2026-02-09_interview.md
                            (archives original)
 inbox/archive/
   meeting-notes.txt   ◀── processed files land here
@@ -16,8 +17,8 @@ inbox/archive/
 
 1. Drop a file in the inbox directory
 2. The script picks it up, reads the content
-3. Sends it to the Anthropic API with the configured prompt
-4. Writes the structured result to the knowledge repo (a separate git repo)
+3. POSTs it to the Power Automate HTTP trigger (Copilot Studio flow)
+4. Writes the flow's response to the knowledge repo (a separate git repo)
 5. Moves the original file to the archive directory
 
 ## Setup
@@ -26,7 +27,7 @@ inbox/archive/
 # 1. Copy the example config and fill in your settings
 Copy-Item config.example.json config.json
 
-# 2. Edit config.json — set your paths and API key
+# 2. Edit config.json — set your Flow URL and paths
 notepad config.json
 
 # 3. Run it
@@ -42,12 +43,8 @@ notepad config.json
 | `KnowledgeRepoPath` | Output directory — point this at your knowledge git repo |
 | `PollIntervalSeconds` | How often to check for new files (default: 10) |
 | `FileFilter` | File pattern to match (default: `*.txt`) |
-| `ApiUrl` | LLM API endpoint |
-| `ApiKey` | API key |
-| `Model` | Model to use |
-| `MaxTokens` | Max response tokens (default: 4096) |
-| `SystemPrompt` | System prompt sent to the LLM |
-| `UserPromptTemplate` | User message template — `{{TRANSCRIPT}}` is replaced with file contents |
+| `FlowUrl` | Power Automate HTTP trigger URL |
+| `ResponseField` | JSON field in the flow response that contains the result (default: `reply`) |
 
 ## Usage
 

@@ -1,13 +1,14 @@
 <#
 .SYNOPSIS
-    Watches an inbox directory for new files, sends them to an LLM for
-    processing, and writes the results to a knowledge repository.
+    Watches an inbox directory for new files, sends them to a Copilot Studio
+    flow via Power Automate HTTP trigger, and writes the results to a
+    knowledge repository.
 
 .DESCRIPTION
     Polls the configured inbox path for files matching the filter pattern.
-    Each new file is read, sent to the Anthropic Messages API with the
-    configured prompt, and the response is written to the knowledge repo.
-    Processed files are moved to an archive directory.
+    Each new file is read, POSTed to a Power Automate HTTP trigger endpoint,
+    and the response is written to the knowledge repo. Processed files are
+    moved to an archive directory.
 
 .PARAMETER ConfigPath
     Path to the JSON configuration file. Defaults to config.json in the
@@ -47,7 +48,7 @@ if (-not (Test-Path $ConfigPath)) {
 $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 
 # Validate required settings
-$requiredFields = @("InboxPath", "KnowledgeRepoPath", "ApiUrl", "ApiKey", "Model")
+$requiredFields = @("InboxPath", "KnowledgeRepoPath", "FlowUrl")
 foreach ($field in $requiredFields) {
     if (-not $Config.$field) {
         Write-Error "Missing required config field: $field"
@@ -60,12 +61,8 @@ $ArchivePath      = if ($Config.ArchivePath) { $Config.ArchivePath } else { Join
 $KnowledgeRepo    = $Config.KnowledgeRepoPath
 $PollInterval     = if ($Config.PollIntervalSeconds) { $Config.PollIntervalSeconds } else { 10 }
 $FileFilter       = if ($Config.FileFilter) { $Config.FileFilter } else { "*.txt" }
-$ApiUrl           = $Config.ApiUrl
-$ApiKey           = $Config.ApiKey
-$Model            = $Config.Model
-$MaxTokens        = if ($Config.MaxTokens) { $Config.MaxTokens } else { 4096 }
-$SystemPrompt     = $Config.SystemPrompt
-$UserTemplate     = if ($Config.UserPromptTemplate) { $Config.UserPromptTemplate } else { "{{TRANSCRIPT}}" }
+$FlowUrl          = $Config.FlowUrl
+$ResponseField    = if ($Config.ResponseField) { $Config.ResponseField } else { "reply" }
 
 # ── Ensure directories exist ────────────────────────────────────────
 
@@ -78,44 +75,36 @@ foreach ($dir in @($InboxPath, $ArchivePath, $KnowledgeRepo)) {
 
 # ── Functions ────────────────────────────────────────────────────────
 
-function Send-ToLLM {
+function Send-ToFlow {
     <#
     .SYNOPSIS
-        Sends transcript text to the Anthropic Messages API and returns the response.
+        POSTs transcript text to the Power Automate HTTP trigger and returns the response.
     #>
     param(
         [Parameter(Mandatory)][string]$Transcript,
         [Parameter(Mandatory)][string]$SourceFileName
     )
 
-    $userMessage = $UserTemplate -replace "{{TRANSCRIPT}}", $Transcript
-
     $body = @{
-        model      = $Model
-        max_tokens = $MaxTokens
-        messages   = @(
-            @{ role = "user"; content = $userMessage }
-        )
-    }
-
-    if ($SystemPrompt) {
-        $body["system"] = $SystemPrompt
-    }
-
-    $jsonBody = $body | ConvertTo-Json -Depth 10
+        message  = $Transcript
+        filename = $SourceFileName
+    } | ConvertTo-Json -Depth 10
 
     $headers = @{
-        "x-api-key"         = $ApiKey
-        "anthropic-version" = "2023-06-01"
-        "content-type"      = "application/json"
+        "Content-Type" = "application/json"
     }
 
-    Write-Host "  Sending to $Model ..." -ForegroundColor Cyan
+    Write-Host "  Sending to Copilot Studio flow ..." -ForegroundColor Cyan
 
-    $response = Invoke-RestMethod -Uri $ApiUrl -Method Post -Headers $headers -Body $jsonBody
+    $response = Invoke-RestMethod -Uri $FlowUrl -Method Post -Headers $headers -Body $body
 
-    # Extract text from the response content blocks
-    $resultText = ($response.content | Where-Object { $_.type -eq "text" } | ForEach-Object { $_.text }) -join "`n"
+    # Extract the reply from the configured response field
+    $resultText = $response.$ResponseField
+
+    if (-not $resultText) {
+        Write-Warning "  Response field '$ResponseField' was empty. Full response:"
+        Write-Host ($response | ConvertTo-Json -Depth 5)
+    }
 
     return $resultText
 }
@@ -135,7 +124,7 @@ function Get-OutputFileName {
 function Process-InboxFile {
     <#
     .SYNOPSIS
-        Reads a single inbox file, sends it to the LLM, and writes the output.
+        Reads a single inbox file, sends it to the flow, and writes the output.
     #>
     param([Parameter(Mandatory)][System.IO.FileInfo]$File)
 
@@ -149,8 +138,13 @@ function Process-InboxFile {
         return
     }
 
-    # Send to LLM
-    $result = Send-ToLLM -Transcript $transcript -SourceFileName $File.Name
+    # Send to flow
+    $result = Send-ToFlow -Transcript $transcript -SourceFileName $File.Name
+
+    if (-not $result) {
+        Write-Warning "  No result returned for $($File.Name), skipping."
+        return
+    }
 
     # Write output to knowledge repo
     $outputName = Get-OutputFileName -SourceName $File.Name
@@ -172,7 +166,7 @@ Write-Host "Inbox:     $InboxPath"
 Write-Host "Archive:   $ArchivePath"
 Write-Host "Output:    $KnowledgeRepo"
 Write-Host "Filter:    $FileFilter"
-Write-Host "Model:     $Model"
+Write-Host "Endpoint:  $($FlowUrl.Substring(0, [Math]::Min(60, $FlowUrl.Length)))..."
 Write-Host "Mode:      $(if ($Once) { 'Single pass' } else { "Polling every ${PollInterval}s" })"
 Write-Host ""
 
