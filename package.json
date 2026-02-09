@@ -1,0 +1,25 @@
+{
+  "name": "knowledge-ingress",
+  "version": "0.1.0",
+  "description": "Inbound transcript management — code and prompts for the knowledge ingestion pipeline",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test dist/**/*.test.js",
+    "artifact-repo:init": "tsx src/cli.ts init-repo",
+    "artifact-repo:list": "tsx src/cli.ts list-repos",
+    "artifact-repo:validate": "tsx src/cli.ts validate-repos"
+  },
+  "keywords": ["knowledge", "transcripts", "ingestion"],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0"
+  }
+}
