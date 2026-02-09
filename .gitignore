@@ -1,47 +1,14 @@
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-
-# TypeScript cache
-*.tsbuildinfo
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
-
-# Test coverage
-coverage/
-*.lcov
-.nyc_output/
-
-# Local config (contains paths specific to each developer's machine)
-config/repos.json
-
-# Environment variables
-.env
-.env.*
-!.env.example
+# Local config (contains API keys and machine-specific paths)
+config.json
 
 # OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Editor directories
-.idea/
+# Editor
 .vscode/
+.idea/
 *.swp
 *.swo
-
-# Optional caches
-.npm
-.eslintcache
-.cache/
+*~

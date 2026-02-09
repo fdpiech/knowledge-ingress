@@ -1,85 +1,73 @@
 # knowledge-ingress
 
-Code and prompts for inbound transcript management. Artifacts (processed
-transcripts, structured knowledge, etc.) live in their own separate git
-repositories.
+Watches an inbox directory for transcript files, sends them to an LLM for
+processing, and writes the results to a separate knowledge repository.
 
-## Architecture
+## How it works
 
 ```
-knowledge-ingress/          <-- this repo: code + prompts
-├── src/                    TypeScript source
-│   ├── artifact-repos.ts   Manage external artifact repos
-│   ├── cli.ts              CLI commands
-│   ├── types.ts            Shared type definitions
-│   └── index.ts            Public API
-├── prompts/                Prompt templates for the pipeline
-├── config/
-│   ├── repos.json          Registry of artifact repos (local, gitignored)
-│   └── repos.example.json  Example configuration
-└── ...
-
-../transcripts-raw/         <-- artifact repo (separate git)
-../knowledge-base/          <-- artifact repo (separate git)
+inbox/              ──▶  Invoke-KnowledgeIngress.ps1  ──▶  knowledge-repo/
+  meeting-notes.txt        (reads file, calls LLM)          2026-02-09_meeting-notes.md
+  interview.txt            (writes structured output)        2026-02-09_interview.md
+                           (archives original)
+inbox/archive/
+  meeting-notes.txt   ◀── processed files land here
 ```
 
-### Why separate repos?
-
-- **History isolation** — artifact repos can grow large with binary or
-  generated content without bloating the code repo's git history.
-- **Independent versioning** — artifacts follow their own release cadence.
-- **Access control** — different people/systems may need access to artifacts
-  vs. code.
-- **Multiple artifact stores** — different types of output (raw transcripts,
-  processed summaries, structured data) can each have their own repo.
+1. Drop a file in the inbox directory
+2. The script picks it up, reads the content
+3. Sends it to the Anthropic API with the configured prompt
+4. Writes the structured result to the knowledge repo (a separate git repo)
+5. Moves the original file to the archive directory
 
 ## Setup
 
-```bash
-npm install
-cp config/repos.example.json config/repos.json   # then edit paths/remotes
+```powershell
+# 1. Copy the example config and fill in your settings
+Copy-Item config.example.json config.json
+
+# 2. Edit config.json — set your paths and API key
+notepad config.json
+
+# 3. Run it
+.\Invoke-KnowledgeIngress.ps1
 ```
 
-## Managing artifact repos
+## Configuration
 
-```bash
-# Initialize a new artifact repo on disk and register it
-npm run artifact-repo:init -- my-artifacts ../my-artifacts "Description here"
+| Field | Description |
+|---|---|
+| `InboxPath` | Directory to watch for new files |
+| `ArchivePath` | Where processed files are moved (default: inbox/archive) |
+| `KnowledgeRepoPath` | Output directory — point this at your knowledge git repo |
+| `PollIntervalSeconds` | How often to check for new files (default: 10) |
+| `FileFilter` | File pattern to match (default: `*.txt`) |
+| `ApiUrl` | LLM API endpoint |
+| `ApiKey` | API key |
+| `Model` | Model to use |
+| `MaxTokens` | Max response tokens (default: 4096) |
+| `SystemPrompt` | System prompt sent to the LLM |
+| `UserPromptTemplate` | User message template — `{{TRANSCRIPT}}` is replaced with file contents |
 
-# List all configured repos
-npm run artifact-repo:list
+## Usage
 
-# Validate all repos exist and are healthy
-npm run artifact-repo:validate
+```powershell
+# Poll continuously (default)
+.\Invoke-KnowledgeIngress.ps1
+
+# Process current inbox files once and exit
+.\Invoke-KnowledgeIngress.ps1 -Once
+
+# Use a custom config file
+.\Invoke-KnowledgeIngress.ps1 -ConfigPath C:\other\config.json
 ```
 
-## Programmatic usage
+## Artifact repos
 
-```typescript
-import { initRepo, writeArtifact, readArtifact } from "knowledge-ingress";
-
-// Write a processed artifact to a repo
-await writeArtifact("knowledge-base", "summaries/2026-02-09.md", content);
-
-// Read it back
-const summary = await readArtifact("knowledge-base", "summaries/2026-02-09.md");
-```
-
-## Prompts
-
-Prompt templates live in `prompts/`. Each is a markdown file with frontmatter
-that specifies inputs, outputs, and which artifact repo receives the result.
-See `prompts/README.md` for conventions.
-
-## Development
-
-```bash
-npm run dev          # Run with tsx
-npm run build        # Compile TypeScript
-npm run typecheck    # Type-check without emitting
-npm run lint         # Lint source
-npm test             # Run tests
-```
+The output directory (`KnowledgeRepoPath`) is intended to be its own git
+repository. This keeps generated artifacts out of this code repo. You can
+point multiple instances of the script at different artifact repos by using
+different config files.
 
 ## License
 

@@ -1,0 +1,15 @@
+{
+    "InboxPath": "C:\\Knowledge\\inbox",
+    "ArchivePath": "C:\\Knowledge\\inbox\\archive",
+    "KnowledgeRepoPath": "C:\\Knowledge\\knowledge-base",
+    "PollIntervalSeconds": 10,
+    "FileFilter": "*.txt",
+
+    "ApiUrl": "https://api.anthropic.com/v1/messages",
+    "ApiKey": "",
+    "Model": "claude-sonnet-4-5-20250929",
+    "MaxTokens": 4096,
+
+    "SystemPrompt": "You are a knowledge extraction assistant. You receive raw transcripts and produce structured, well-organized summaries.",
+    "UserPromptTemplate": "Analyze the following transcript and produce a structured summary.\n\nInclude:\n- **Title**: A descriptive title\n- **Participants**: Who was involved (if identifiable)\n- **Key Points**: The main points discussed\n- **Decisions**: Any decisions or conclusions reached\n- **Action Items**: Next steps or follow-ups mentioned\n- **Open Questions**: Unresolved topics\n\n---\n\n{{TRANSCRIPT}}"
+}
